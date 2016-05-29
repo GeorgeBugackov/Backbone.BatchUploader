@@ -42,18 +42,59 @@
         }
       },
 
+      /*---------- Start of "multiple" block -------- */
+
       _sendMultiple: function () {
-        _.each(this.get('entities'), function (entity, i, entities) {
-          entity.model.save(null, {
-            success: entity.success,
-            error: entity.error
-          });
-        });
+        this._pendingRequests = [];
+        this._batchPromise = $.Deferred();
+
+        _.each(this.get('entities'), this._saveEntity, this);
+
+        $.when(this._batchPromise)
+          .done(this._onResolved)
+          .fail(this._onRejected)
+          .progress(this._defrredProgress);
       },
+
+      _saveEntity: function (entity) {
+        if (entity instanceof Backbone.Model && entity.save) {
+          this._pendingRequests.push(entity.save(null, {
+            success: function () {
+              this._areRequestsCompleted(this._pendingRequests);
+            }.bind(this)
+          }));
+        } else {
+          console.warn("This entity is not a backbone model " +
+          "or has no 'save' method", entity);
+        }
+      },
+
+      _areRequestsCompleted: function (requests) {
+        if (!_.any(requests, this._isXHRPending)) {
+          this._batchPromise.resolveWith(this);
+          requests = [];
+        }
+      },
+
+      _isXHRPending: function (xhr) {
+        return xhr.status !== 200;
+      },
+
+      _onResolved: function () {},
+
+      _onRejected: function () {},
+
+      _defrredProgress: function () {},
+
+      /*---------- End -------- */
+
+      /*---------- Start of "single" block -------- */
 
       _sendSingle: function  () {
         console.warn('Single request was sent');
       }
+
+      /*---------- End -------- */
     });
 
     return Backbone.BatchUploader;
