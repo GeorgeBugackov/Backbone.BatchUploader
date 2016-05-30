@@ -15,7 +15,7 @@
     }
 }(function(_, $, Backbone){
     if(!Backbone){
-        throw 'Please include Backbone.js before Backbone.ModelBinder.js';
+        throw 'Please include Backbone.js before Backbone.BatchUploader.js';
     }
 
     Backbone.BatchUploader = Backbone.Model.extend({
@@ -24,19 +24,19 @@
         var defaults = {
             entities: [], // array of models (could be of different type)
                           // + success callbacks for them
-            batchURL: '', // URL for single mod
+            batchURL: '', // URL for single mode
             type: 'multiple' // multiple || single
           };
 
         this.set(_.extend(defaults, options));
       },
 
-      send: function () {
+      send: function (callbacks) {
         var methodName = '_send' + this.get('type').charAt(0).toUpperCase()
          + this.get('type').slice(1).toLowerCase();
 
         if (this.get('entities').length) {
-          this[methodName]();
+          this[methodName](callbacks);
         } else {
           console.warn('No models to upload. Requests were not sent!');
         }
@@ -44,56 +44,32 @@
 
       /*---------- Start of "multiple" block -------- */
 
-      _sendMultiple: function () {
+      _sendMultiple: function (callbacks) {
         this._pendingRequests = [];
-        this._batchPromise = $.Deferred();
 
         _.each(this.get('entities'), this._saveEntity, this);
 
-        $.when(this._batchPromise)
-          .done(this._onResolved)
-          .fail(this._onRejected)
-          .progress(this._defrredProgress);
+        $.when.apply($, this._pendingRequests)
+          .done(callbacks.success)
+          .fail(callbacks.error);
       },
 
       _saveEntity: function (entity) {
         if (entity instanceof Backbone.Model && entity.save) {
-          this._pendingRequests.push(entity.save(null, {
-            success: function () {
-              this._areRequestsCompleted(this._pendingRequests);
-            }.bind(this)
-          }));
+          this._pendingRequests.push(entity.save());
         } else {
           console.warn("This entity is not a backbone model " +
           "or has no 'save' method", entity);
         }
       },
-
-      _areRequestsCompleted: function (requests) {
-        if (!_.any(requests, this._isXHRPending)) {
-          this._batchPromise.resolveWith(this);
-          requests = [];
-        }
-      },
-
-      _isXHRPending: function (xhr) {
-        return xhr.status !== 200;
-      },
-
-      _onResolved: function () {},
-
-      _onRejected: function () {},
-
-      _defrredProgress: function () {},
-
       /*---------- End -------- */
 
+
+
       /*---------- Start of "single" block -------- */
+      _sendSingle: function  (callbacks) {
 
-      _sendSingle: function  () {
-        console.warn('Single request was sent');
       }
-
       /*---------- End -------- */
     });
 
