@@ -65,12 +65,36 @@
       /*---------- End -------- */
 
 
-
       /*---------- Start of "single" block -------- */
       _sendSingle: function  (callbacks) {
+          var batchURL = this.get('batchURL'),
+            batchModel;
 
-      }
+          if (batchURL) {
+            batchModel = new Backbone.Model({
+              entities: this.get('entities')
+            });
+
+            batchModel.urlRoot = batchURL;
+
+            batchModel.save(null, {
+              success: callbacks.success,
+              error: callbacks.error
+            });
+          } else {
+            console.warn('batchURL for single request upload is not defined.' +
+              'Request was not sent!');
+          }
+      },
       /*---------- End -------- */
+
+      save: function () {
+        console.warn('BatchUploader could not be saved');
+      },
+
+      fetch: function () {
+        console.warn('BatchUploader could not be fetched');
+      }
     });
 
     return Backbone.BatchUploader;
